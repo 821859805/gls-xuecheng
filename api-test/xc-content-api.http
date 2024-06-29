@@ -7,3 +7,26 @@ Content-Type: application/json
   "courseName": "java",
   "publishStatus": "203001"
 }
+
+### 创建课程
+POST {{content_host}}/content/course
+Content-Type: application/json
+
+{
+  "charge": "201001",
+  "price": 130,
+  "originalPrice":129,
+  "qq": "233",
+  "wechat": "412",
+  "phone": "413",
+  "validDays": 3650,
+  "mt": "1-1",
+  "st": "1-1-1",
+  "name": "",
+  "pic": "3fd",
+  "teachmode": "200002",
+  "users": "初级人员",
+  "tags": "efes",
+  "grade": "204001",
+  "description": "fesf頥"
+}
