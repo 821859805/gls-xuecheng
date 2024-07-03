@@ -6,18 +6,15 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.gls.base.exception.XueChengException;
 import com.gls.base.model.PageParams;
 import com.gls.base.model.PageResult;
-import com.gls.content.mapper.CourseBaseMapper;
-import com.gls.content.mapper.CourseCategoryMapper;
-import com.gls.content.mapper.CourseMarketMapper;
-import com.gls.content.model.dto.AddCourseDto;
+import com.gls.content.mapper.*;
+import com.gls.content.model.dto.CourseDto;
 import com.gls.content.model.dto.QueryCourseParamsDto;
-import com.gls.content.model.po.CourseBase;
-import com.gls.content.model.po.CourseCategory;
-import com.gls.content.model.po.CourseMarket;
+import com.gls.content.model.po.*;
 import com.gls.content.model.vo.CourseBaseInfoVo;
 import com.gls.content.service.CourseBaseInfoService;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang.StringUtils;
+import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,6 +33,8 @@ public class CourseBaseInfoServiceImpl implements CourseBaseInfoService {
     private final CourseBaseMapper courseBaseMapper;
     private final CourseMarketMapper courseMarketMapper;
     private final CourseCategoryMapper courseCategoryMapper;
+    private final CourseTeacherMapper courseTeacherMapper;
+    private final TeachplanMapper teachplanMapper;
 
     @Override
     public PageResult<CourseBase> queryCourseBaseList(PageParams pageParams, QueryCourseParamsDto queryCourseParamsDto) {
@@ -55,7 +54,7 @@ public class CourseBaseInfoServiceImpl implements CourseBaseInfoService {
 
     @Override
     @Transactional
-    public CourseBaseInfoVo insert(AddCourseDto addCourseDto, Long companyId) {
+    public CourseBaseInfoVo insert(CourseDto dto, Long companyId) {
         //合法性校验
 //        if (StringUtils.isBlank(addCourseDto.getName())) {
 //            throw new XueChengException("课程名称为空");
@@ -87,7 +86,7 @@ public class CourseBaseInfoServiceImpl implements CourseBaseInfoService {
 
         //向课程基本信息表插入数据
         CourseBase courseBase = new CourseBase();
-        BeanUtil.copyProperties(addCourseDto,courseBase);
+        BeanUtil.copyProperties(dto,courseBase);
         courseBase.setAuditStatus("202002");
         courseBase.setStatus("203001");
         courseBase.setCompanyId(companyId);     //先写companyId会导致原始数据被覆盖，null值可以覆盖非null值
@@ -99,7 +98,7 @@ public class CourseBaseInfoServiceImpl implements CourseBaseInfoService {
 
         //向课程营销表插入数据
         CourseMarket courseMarket = new CourseMarket();
-        BeanUtil.copyProperties(addCourseDto,courseMarket);
+        BeanUtil.copyProperties(dto,courseMarket);
         courseMarket.setId(courseBase.getId());
         int i = saveCourseMarket(courseMarket);
         if(i<=0)
@@ -160,6 +159,64 @@ public class CourseBaseInfoServiceImpl implements CourseBaseInfoService {
         return courseBaseInfoVo;
 
     }
+
+    @Override
+    @Transactional
+    public CourseBaseInfoVo updateAndQuery(Long companyId, CourseDto dto) {
+        Long courseId = dto.getId();
+        CourseBase courseBase = courseBaseMapper.selectById(dto.getId());
+        if(courseBase==null)
+            XueChengException.cast("要修改的课程不存在！！！");
+        if(!courseBase.getCompanyId().equals(companyId))
+            XueChengException.cast("只能修改自己机构的课程！！！");
+        BeanUtil.copyProperties(dto,courseBase);
+        courseBase.setChangeDate(LocalDateTime.now());
+
+        //更新课程基本信息
+        int i = courseBaseMapper.updateById(courseBase);
+        CourseMarket courseMarket = new CourseMarket();
+        BeanUtil.copyProperties(dto,courseMarket);
+        saveCourseMarket(courseMarket);
+        CourseBaseInfoVo courseBaseInfo = this.getCourseBaseInfo(courseId);
+        return courseBaseInfo;
+    }
+
+
+    /**
+     * @description 根据课程id删除：课程基本信息，营销信息，课程计划，课程教师
+     *
+     * @param id
+     * @param companyId
+     * @return void
+     * @author 郭林赛
+     * @createDate 2024/7/3 11:53
+     **/
+    @Override
+    @Transactional
+    public void deleteById(Long id, Long companyId) {
+        CourseBase courseBase = courseBaseMapper.selectById(id);
+        if(courseBase==null)
+            XueChengException.cast("要删除的课程不存在！！！");
+        if(!companyId.equals(courseBase.getCompanyId()))
+            XueChengException.cast("只能删除本机构的课程！！！");
+        if(!"202002".equals(courseBase.getAuditStatus()))
+            XueChengException.cast("只有未提交审核的课程才能删除！！！");
+
+        courseBaseMapper.deleteById(id);//删除课程基本信息
+        courseMarketMapper.deleteById(id);//删除课程营销信息
+
+        //删除课程计划信息
+        LambdaQueryWrapper<Teachplan> queryWrapper1 = new LambdaQueryWrapper<>();
+        queryWrapper1.eq(Teachplan::getCourseId,id);
+        teachplanMapper.delete(queryWrapper1);
+
+        //删除课程教师信息
+        LambdaQueryWrapper<CourseTeacher> queryWrapper2 = new LambdaQueryWrapper<>();
+        queryWrapper2.eq(CourseTeacher::getCourseId,id);
+        courseTeacherMapper.delete(queryWrapper2);
+    }
+
+
 }
 
 

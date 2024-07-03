@@ -2,7 +2,8 @@ package com.gls.content.service;
 
 import com.gls.base.model.PageParams;
 import com.gls.base.model.PageResult;
-import com.gls.content.model.dto.AddCourseDto;
+
+import com.gls.content.model.dto.CourseDto;
 import com.gls.content.model.dto.QueryCourseParamsDto;
 import com.gls.content.model.po.CourseBase;
 import com.gls.content.model.vo.CourseBaseInfoVo;
@@ -31,11 +32,16 @@ public interface CourseBaseInfoService {
     /**
      * @description 创建课程基本信息服务接口
      *
-     * @param addCourseDto
+     * @param dto
      * @return com.gls.content.model.vo.CourseBaseInfoVo
      * @author 郭林赛
      * @createDate 2024/6/28 11:34
      **/
+    CourseBaseInfoVo insert(CourseDto dto, Long companyId);
 
-    CourseBaseInfoVo insert(AddCourseDto addCourseDto, Long companyId);
+    CourseBaseInfoVo getCourseBaseInfo(long courseId);
+
+    CourseBaseInfoVo updateAndQuery(Long companyId, CourseDto dto);
+
+    void deleteById(Long id,Long companyId);
 }

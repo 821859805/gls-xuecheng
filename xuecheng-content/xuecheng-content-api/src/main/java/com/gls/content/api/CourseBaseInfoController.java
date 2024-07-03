@@ -1,9 +1,8 @@
 package com.gls.content.api;
 
-import com.gls.base.exception.ValidationGroups;
 import com.gls.base.model.PageParams;
 import com.gls.base.model.PageResult;
-import com.gls.content.model.dto.AddCourseDto;
+import com.gls.content.model.dto.CourseDto;
 import com.gls.content.model.dto.QueryCourseParamsDto;
 import com.gls.content.model.po.CourseBase;
 import com.gls.content.model.vo.CourseBaseInfoVo;
@@ -11,6 +10,7 @@ import com.gls.content.service.CourseBaseInfoService;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/course")
 @RequiredArgsConstructor
+@Slf4j
 public class CourseBaseInfoController {
     private final CourseBaseInfoService courseBaseInfoService;
 
@@ -38,16 +39,56 @@ public class CourseBaseInfoController {
     /**
      * @description 创建课程基本信息
      *
-     * @param addCourseDto
+     * @param dto
      * @return com.gls.content.model.vo.CourseBaseInfoVo
      * @author 郭林赛
      * @createDate 2024/6/28 11:32
      **/
 
     @PostMapping
-    public CourseBaseInfoVo createCourseBase(@RequestBody @Validated({ValidationGroups.Insert.class}) AddCourseDto addCourseDto){
+    public CourseBaseInfoVo createCourseBase(@RequestBody @Validated CourseDto dto){
         Long companyId = 1232141425L;
-        return courseBaseInfoService.insert(addCourseDto,companyId);
+        return courseBaseInfoService.insert(dto,companyId);
+    }
+
+    /**
+     * @description 查询课程基本信息接口
+     *
+     * @param courseId
+     * @return com.gls.content.model.vo.CourseBaseInfoVo
+     * @author 郭林赛
+     * @createDate 2024/7/1 11:13
+     **/
+    @GetMapping("/{courseId}")
+    public CourseBaseInfoVo queryById(@PathVariable Long courseId){
+        return courseBaseInfoService.getCourseBaseInfo(courseId);
+    }
+
+    /**
+     * @description 修改课程信息并返回课程信息
+     *
+     * @param dto
+     * @return com.gls.content.model.vo.CourseBaseInfoVo
+     * @author 郭林赛
+     * @createDate 2024/7/1 11:13
+     **/
+    @PutMapping
+    public CourseBaseInfoVo updateAndQuery(@RequestBody CourseDto dto){
+        log.info("修改课程接口测试：{}",dto);
+        return courseBaseInfoService.updateAndQuery(1232141425L,dto);
+    }
+
+    /**
+     * @description 通过课程id删除课程基本信息，课程营销信息，课程计划，课程教师信息
+     *
+     * @param id
+     * @return void
+     * @author 郭林赛
+     * @createDate 2024/7/3 11:49
+     **/
+    @DeleteMapping("/{id}")
+    public void deleteById(@PathVariable Long id){
+        courseBaseInfoService.deleteById(id,1232141425L);
     }
 
 }
