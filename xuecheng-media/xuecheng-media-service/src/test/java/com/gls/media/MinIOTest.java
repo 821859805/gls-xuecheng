@@ -6,6 +6,8 @@ import com.j256.simplemagic.ContentInfoUtil;
 import io.minio.*;
 
 import io.minio.errors.*;
+import io.minio.messages.DeleteError;
+import io.minio.messages.DeleteObject;
 import org.apache.commons.compress.utils.IOUtils;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
@@ -16,6 +18,11 @@ import java.io.FilterInputStream;
 import java.io.IOException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * @author 郭林赛
@@ -80,5 +87,65 @@ public class MinIOTest {
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
+    }
+
+    //分块文件上传minio，必须排序，因为minio合并时除了最后一块，其他都不能小于5MB
+    @Test
+    public void uploadChunk(){
+        String chunkFolderPath = "E:\\software\\媒资测试文件\\chunk\\";
+        File chunkFolder = new File(chunkFolderPath);
+        File[] files = chunkFolder.listFiles();
+        Arrays.sort(files, Comparator.comparingInt(o -> Integer.parseInt(o.getName())));
+        for (int i = 0; i < files.length; i++) {
+            try{
+                UploadObjectArgs uploadObjectArgs = UploadObjectArgs
+                        .builder().
+                        bucket("testbucket").
+                        object("chunk/"+i).
+                        filename(files[i].getAbsolutePath())    //文件本地路径
+                        .build();
+                minioClient.uploadObject(uploadObjectArgs);
+            }catch (Exception e){
+                e.printStackTrace();
+            }
+        }
+    }
+
+    //通过minio的合并文件，注意minio分块大小至少为5MB
+    @Test
+    public void test_merge() throws Exception{
+        //从minio中获取分块源文件
+        List<ComposeSource> sources = Stream
+                .iterate(0,i->++i)  //从0开始遍历，到
+                .limit(19)  //i<?
+                .map(i->ComposeSource   //相当于for循环里面，获取minio里面的分块源文件
+                        .builder()
+                        .bucket("testbucket")
+                        .object("chunk/".concat(Integer.toString(i)))
+                        .build())
+                .collect(Collectors.toList());
+        ComposeObjectArgs composeObjectArgs = ComposeObjectArgs.builder().bucket("testbucket").object("merge.mp4").sources(sources).build();
+        minioClient.composeObject(composeObjectArgs);
+    }
+
+    //清除分块文件
+    @Test
+    public void test_removeObjects(){
+        List<DeleteObject> deleteObjects = Stream
+                .iterate(0, i -> ++i)
+                .limit(19)
+                .map(i -> new DeleteObject("chunk/".concat(Integer.toString(i))))
+                .collect(Collectors.toList());
+        RemoveObjectsArgs removeObjectsArgs = RemoveObjectsArgs.builder().bucket("testbucket").objects(deleteObjects).build();
+        Iterable<Result<DeleteError>> results = minioClient.removeObjects(removeObjectsArgs);
+        results.forEach(r->{
+            DeleteError deleteError = null;
+            try {
+                deleteError = r.get();
+            }catch (Exception e){
+                e.printStackTrace();
+            }
+        });
+
     }
 }

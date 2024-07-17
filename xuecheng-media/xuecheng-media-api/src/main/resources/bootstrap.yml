@@ -26,4 +26,5 @@ spring:
             refresh: true
   profiles:
     active: dev
-
+  main:
+    allow-circular-references: true
